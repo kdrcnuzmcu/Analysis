@@ -207,6 +207,19 @@ SAMPLES:
         plt.get_current_fig_manager()
         plt.show()
 
+    def Scaler(self,
+               col,
+               scaler):
+        Scalers = {
+            "standard": StandardScaler,
+            "robust": RobustScaler,
+            "minmax": MinMaxScaler
+        }
+        S = Scalers[scaler]
+        new_col = S().fit_transform(self.dataframe[[col]])
+        new_col = [np.round(x[0], decimals=4) for x in new_col]
+        self.dataframe[col] = new_col
+
 PandasOptions().SetOptions(1, 2, 4)
 
 dataframe = pd.read_csv(r"C:\Users\kdrcn\OneDrive\Masaüstü\Py\datasets\CSV\Hitters.csv")
@@ -216,8 +229,10 @@ helper = HelperFunctions(dataframe)
 helper.QuickView()
 helper.Variables()
 cat_cols, num_cols, cat_but_car = helper.GrabColNames()
+num_cols.remove("Salary")
+
 for col in num_cols:
-    helper.Outliers(col)
+    helper.Outliers(col, low_Quantile=0.05, high_Quantile=0.95)
 for col in cat_cols:
     helper.CategoricalsByTarget(col, "Salary")
 
@@ -230,8 +245,8 @@ TM_CB = CatBoostRegressor(verbose=False)
 TM_LGBM = LGBMRegressor()
 TM_XGB = XGBRegressor()
 
-test = dataframe[dataframe["Salary"].isnull()]
-train = dataframe[dataframe["Salary"].notnull()]
+test = dataframe[dataframe["Salary"].isnull()].reset_index(drop=True)
+train = dataframe[dataframe["Salary"].notnull()].reset_index(drop=True)
 
 helper_train = HelperFunctions(train)
 helper_train.QuickView()
@@ -244,31 +259,50 @@ train_base = pd.get_dummies(train, columns=cat_cols, drop_first=True)
 X = train_base.drop("Salary", axis=1)
 y = train_base["Salary"]
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-cross_val_score()
 MAE = mean_absolute_error
-RMSE = mean_squared_error
 MAPE = mean_absolute_percentage_error
-
 
 scorer_MAE = make_scorer(MAE)
 scorer_MAPE = make_scorer(MAPE)
 
-CVS_LM_LR = cross_val_score(LM_LR, X, y, scoring=scorer_MAPE)
-print(f"LM_LR: {np.mean(CVS_LM_LR)}")
-# CVS_LM_L = cross_val_score(LM_L, X, y, scoring=scorer_MAPE)
-# print(f"LM_L: {np.mean(LM_L)}")
-CVS_LM_R = cross_val_score(LM_R, X, y, scoring=scorer_MAPE)
-print(f"LM_R: {np.mean(CVS_LM_R)}")
-# CVS_LM_EN = cross_val_score(LM_EN, X, y, scoring=scorer_MAPE)
-# print(f"LM_EN: {np.mean(LM_EN)}")
-CVS_TM_CB = cross_val_score(TM_CB, X, y, scoring=scorer_MAPE)
-print(f"TM_CB: {np.mean(CVS_TM_CB)}")
-CVS_TM_LGBM = cross_val_score(TM_LGBM, X, y, scoring=scorer_MAPE)
-print(f"TM_LGBM: {np.mean(CVS_TM_LGBM)}")
-CVS_TM_XGB = cross_val_score(TM_XGB, X, y, scoring=scorer_MAPE)
-print(f"TM_XGB: {np.mean(CVS_TM_XGB)}")
+from sklearn.utils._testing import ignore_warnings
+from sklearn.exceptions import ConvergenceWarning
+
+@ignore_warnings(category=ConvergenceWarning)
+def fitting(X, y):
+    CVS_LM_LR = cross_val_score(LM_LR, X, y, scoring=scorer_MAPE, cv=5)
+    print(f"Linear Regression: {np.mean(CVS_LM_LR)}")
+    CVS_LM_L = cross_val_score(LM_L, X, y, scoring=scorer_MAPE, cv=5)
+    print(f"Lasso: {np.mean(CVS_LM_L)}")
+    CVS_LM_R = cross_val_score(LM_R, X, y, scoring=scorer_MAPE, cv=5)
+    print(f"Ridge: {np.mean(CVS_LM_R)}")
+    CVS_LM_EN = cross_val_score(LM_EN, X, y, scoring=scorer_MAPE, cv=5)
+    print(f"ElasticNet: {np.mean(CVS_LM_EN)}")
+    CVS_TM_CB = cross_val_score(TM_CB, X, y, scoring=scorer_MAPE, cv=5)
+    print(f"Catboost: {np.mean(CVS_TM_CB)}")
+    CVS_TM_LGBM = cross_val_score(TM_LGBM, X, y, scoring=scorer_MAPE, cv=5)
+    print(f"LightGBM: {np.mean(CVS_TM_LGBM)}")
+    CVS_TM_XGB = cross_val_score(TM_XGB, X, y, scoring=scorer_MAPE, cv=5)
+    print(f"XGBoost: {np.mean(CVS_TM_XGB)}")
+
+fitting()
+
+train.head()
+for col in num_cols:
+    HelperFunctions(train).Scaler(col, "robust")
+for col in num_cols:
+    HelperFunctions(test).Scaler(col, "robust")
+
+train_next = pd.get_dummies(train, columns=cat_cols, drop_first=True)
+test_next = pd.get_dummies(test, columns=cat_cols, drop_first=True)
+
+X = train_next.drop("Salary", axis=1)
+y = train_next["Salary"]
+
+X.shape
+
+fitting(X, y)
+
 
 
 
