@@ -32,6 +32,9 @@ from ModuleWizard.module_wizard import PandasOptions
 import matplotlib
 matplotlib.use("Qt5Agg")
 
+from sklearn.utils._testing import ignore_warnings
+from sklearn.exceptions import ConvergenceWarning
+
 class HelperFunctions():
     def __init__(self, dataframe):
         self.dataframe = dataframe
@@ -199,7 +202,7 @@ SAMPLES:
     def FeatureImportance(self,
                           model,
                           features,
-                          num=10):
+                          num):
         mpl_style(dark=True)
         FI = pd.DataFrame({"Value": model.feature_importances_, "Feature": features.columns})
         plt.figure(num=f"{model.__class__.__name__}", figsize=(10, 10))
@@ -223,47 +226,38 @@ SAMPLES:
         new_col = [np.round(x[0], decimals=4) for x in new_col]
         self.dataframe[col] = new_col
 
+#region Pipeline
 PandasOptions().SetOptions(1, 2, 4)
-
 dataframe = pd.read_csv(r"C:\Users\kdrcn\OneDrive\Masaüstü\Py\datasets\CSV\Hitters.csv")
-
 helper = HelperFunctions(dataframe)
-
-helper.QuickView()
-helper.Variables()
+# helper.QuickView()
+# helper.Variables()
 cat_cols, num_cols, cat_but_car = helper.GrabColNames()
 num_cols.remove("Salary")
 
+# for col in num_cols:
+#     helper.Outliers(col)
+# for col in cat_cols:
+#     helper.CategoricalsByTarget(col, "Salary")
+
+
 test = dataframe[dataframe["Salary"].isnull()].reset_index(drop=True)
 train = dataframe[dataframe["Salary"].notnull()].reset_index(drop=True)
-
-for col in num_cols:
-    helper.Outliers(col)
-for col in cat_cols:
-    helper.CategoricalsByTarget(col, "Salary")
 
 LM_LR = LinearRegression()
 LM_R = Ridge(alpha=10)
 LM_L = Lasso()
 LM_EN = ElasticNet()
 
-TM_CB = CatBoostRegressor(verbose=False)
+TM_CB = CatBoostRegressor(verbose=False, max_depth=5)
 TM_LGBM = LGBMRegressor()
 TM_XGB = XGBRegressor()
-
-train_base = pd.get_dummies(train, columns=cat_cols, drop_first=True)
-
-X = train_base.drop("Salary", axis=1)
-y = train_base["Salary"]
 
 MAE = mean_absolute_error
 MAPE = mean_absolute_percentage_error
 
 scorer_MAE = make_scorer(MAE)
 scorer_MAPE = make_scorer(MAPE)
-
-from sklearn.utils._testing import ignore_warnings
-from sklearn.exceptions import ConvergenceWarning
 
 @ignore_warnings(category=ConvergenceWarning)
 def fitting(X, y):
@@ -276,15 +270,11 @@ def fitting(X, y):
     CVS_LM_EN = cross_val_score(LM_EN, X, y, scoring=scorer_MAPE, cv=5)
     print(f"ElasticNet: {np.mean(CVS_LM_EN)}")
     CVS_TM_CB = cross_val_score(TM_CB, X, y, scoring=scorer_MAPE, cv=5)
-    print(f"Catboost: {np.mean(CVS_TM_CB)}")
+    print(f"Catboost: {CVS_TM_CB}")
     CVS_TM_LGBM = cross_val_score(TM_LGBM, X, y, scoring=scorer_MAPE, cv=5)
-    print(f"LightGBM: {np.mean(CVS_TM_LGBM)}")
+    print(f"LightGBM: {CVS_TM_LGBM}")
     CVS_TM_XGB = cross_val_score(TM_XGB, X, y, scoring=scorer_MAPE, cv=5)
-    print(f"XGBoost: {np.mean(CVS_TM_XGB)}")
-
-fitting()
-
-train.head()
+    print(f"XGBoost: {CVS_TM_XGB}")
 
 train_next = pd.get_dummies(train, columns=cat_cols, drop_first=True)
 test_next = pd.get_dummies(test, columns=cat_cols, drop_first=True)
@@ -297,16 +287,31 @@ for col in num_cols:
 X = train_next.drop("Salary", axis=1)
 y = train_next["Salary"]
 
-X.shape
+# fitting(X, y)
+#endregion
+
+#region Base Model
+train_base = pd.get_dummies(train, columns=cat_cols, drop_first=True)
+
+X = train_base.drop("Salary", axis=1)
+y = train_base["Salary"]
 
 fitting(X, y)
-
-train_next.corr()
+#endregion
 
 sns.heatmap(train_next.corr(), annot=True, annot_kws={"fontsize":8})
-plt.show()
 
+CB_model = CatBoostRegressor(verbose=False).fit(X, y)
+LGBM_model = LGBMRegressor().fit(X, y)
 XGB_model = XGBRegressor().fit(X, y)
+
+HelperFunctions(X).FeatureImportance(CB_model, X, X.shape[1])
+HelperFunctions(X).FeatureImportance(LGBM_model, X, X.shape[1])
+HelperFunctions(X).FeatureImportance(XGB_model, X, X.shape[1])
+
+CB_model.score(X, y)
+LGBM_model.score(X, y)
 XGB_model.score(X, y)
 
-HelperFunctions(X).FeatureImportance(XGB_model, X)
+
+
