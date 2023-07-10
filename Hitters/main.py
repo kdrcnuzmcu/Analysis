@@ -29,6 +29,9 @@ from typing import Optional
 from ModuleWizard.module_wizard import PandasOptions
 #endregion
 
+import matplotlib
+matplotlib.use("Qt5Agg")
+
 class HelperFunctions():
     def __init__(self, dataframe):
         self.dataframe = dataframe
@@ -231,6 +234,9 @@ helper.Variables()
 cat_cols, num_cols, cat_but_car = helper.GrabColNames()
 num_cols.remove("Salary")
 
+test = dataframe[dataframe["Salary"].isnull()].reset_index(drop=True)
+train = dataframe[dataframe["Salary"].notnull()].reset_index(drop=True)
+
 for col in num_cols:
     helper.Outliers(col)
 for col in cat_cols:
@@ -244,15 +250,6 @@ LM_EN = ElasticNet()
 TM_CB = CatBoostRegressor(verbose=False)
 TM_LGBM = LGBMRegressor()
 TM_XGB = XGBRegressor()
-
-test = dataframe[dataframe["Salary"].isnull()].reset_index(drop=True)
-train = dataframe[dataframe["Salary"].notnull()].reset_index(drop=True)
-
-helper_train = HelperFunctions(train)
-helper_train.QuickView()
-helper_train.Variables()
-
-HelperFunctions(test).Variables()
 
 train_base = pd.get_dummies(train, columns=cat_cols, drop_first=True)
 
@@ -288,6 +285,7 @@ def fitting(X, y):
 fitting()
 
 train.head()
+
 train_next = pd.get_dummies(train, columns=cat_cols, drop_first=True)
 test_next = pd.get_dummies(test, columns=cat_cols, drop_first=True)
 
@@ -305,7 +303,7 @@ fitting(X, y)
 
 train_next.corr()
 
-sns.heatmap(train_next.corr(), annot=True, annot_kws={"fontsize":5})
+sns.heatmap(train_next.corr(), annot=True, annot_kws={"fontsize":8})
 plt.show()
 
 XGB_model = XGBRegressor().fit(X, y)
