@@ -232,7 +232,7 @@ cat_cols, num_cols, cat_but_car = helper.GrabColNames()
 num_cols.remove("Salary")
 
 for col in num_cols:
-    helper.Outliers(col, low_Quantile=0.05, high_Quantile=0.95)
+    helper.Outliers(col)
 for col in cat_cols:
     helper.CategoricalsByTarget(col, "Salary")
 
@@ -288,13 +288,13 @@ def fitting(X, y):
 fitting()
 
 train.head()
-for col in num_cols:
-    HelperFunctions(train).Scaler(col, "robust")
-for col in num_cols:
-    HelperFunctions(test).Scaler(col, "robust")
-
 train_next = pd.get_dummies(train, columns=cat_cols, drop_first=True)
 test_next = pd.get_dummies(test, columns=cat_cols, drop_first=True)
+
+for col in num_cols:
+    HelperFunctions(train_next).Scaler(col, "robust")
+for col in num_cols:
+    HelperFunctions(test_next).Scaler(col, "robust")
 
 X = train_next.drop("Salary", axis=1)
 y = train_next["Salary"]
@@ -303,8 +303,12 @@ X.shape
 
 fitting(X, y)
 
+train_next.corr()
 
+sns.heatmap(train_next.corr(), annot=True, annot_kws={"fontsize":5})
+plt.show()
 
+XGB_model = XGBRegressor().fit(X, y)
+XGB_model.score(X, y)
 
-
-
+HelperFunctions(X).FeatureImportance(XGB_model, X)
