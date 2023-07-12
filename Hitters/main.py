@@ -320,17 +320,46 @@ fitting(X, y)
 
 XGB_model.get_params()
 
+# GridSearch
 XGB_model = XGBRegressor()
+# 27 dakika
 XGBM_params = {"learning_rate": [0.1, 0.01, 0.001],
-               "max_depth": [5, 8, 13, 21],
-               "n_estimators": [100, 200, 300, 400],
-               "colsample_bytree": [0.5, 0.7, 1], "random_state": np.arange(1, 50, 1)}
+               "max_depth": [5, 8],
+               "n_estimators": [100, 200, ],
+               "colsample_bytree": [0.5, 0.7, 1],
+               "random_state": 38}
+
 
 xgbm_best_grid = GridSearchCV(XGB_model, XGBM_params, cv=5, n_jobs=-1, verbose=True).fit(X, y)
 xgbm_best_grid.best_params_
+# learning_rate : 0.1
+# max_depth : 5
+# n_estimators : 100
+# colsample_bytree : 0.5
+# random_state : 38
 
-xgbm_final = XGB_model.set_params(**xgbm_best_grid.best_params_, random_state=42).fit(X, y)
+xgbm_final = XGB_model.set_params(**xgbm_best_grid.best_params_).fit(X, y)
 
 cvs = cross_val_score(xgbm_final, X, y, cv=5)
 cvs
 np.mean(cvs)
+
+# RandomizedSearch
+XGB_model = XGBRegressor(learning_rate=0.1, random_state=38)
+XGBM_params = {"max_depth": np.random.randint(5, 50, 10),
+               "n_estimators": [int(x) for x in np.linspace(start=200, stop=1500, num=8)],
+               "colsample_bytree": [0.5, 0.7, 1]}
+xgbm_best_grid_rs = RandomizedSearchCV(XGB_model, param_distributions=XGBM_params, n_iter=50, cv=5, random_state=42, n_jobs=-1).fit(X, y)
+xgbm_best_grid_rs.best_params_
+# max_depth : 10
+# n_estimators : 942
+# colsample_bytree : 0.5
+
+xgbm_final_rs = XGB_model.set_params(**xgbm_best_grid_rs.best_params_).fit(X, y)
+
+cvs = cross_val_score(xgbm_final_rs, X, y, cv=5)
+cvs
+np.mean(cvs)
+
+
+
