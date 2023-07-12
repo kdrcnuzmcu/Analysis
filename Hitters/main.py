@@ -262,13 +262,13 @@ scorer_MAPE = make_scorer(MAPE)
 @ignore_warnings(category=ConvergenceWarning)
 def fitting(X, y):
     CVS_LM_LR = cross_val_score(LM_LR, X, y, scoring=scorer_MAPE, cv=5)
-    print(f"Linear Regression: {np.mean(CVS_LM_LR)}")
+    print(f"Linear Regression: {CVS_LM_LR}")
     CVS_LM_L = cross_val_score(LM_L, X, y, scoring=scorer_MAPE, cv=5)
-    print(f"Lasso: {np.mean(CVS_LM_L)}")
+    print(f"Lasso: {CVS_LM_L}")
     CVS_LM_R = cross_val_score(LM_R, X, y, scoring=scorer_MAPE, cv=5)
-    print(f"Ridge: {np.mean(CVS_LM_R)}")
+    print(f"Ridge: {CVS_LM_R}")
     CVS_LM_EN = cross_val_score(LM_EN, X, y, scoring=scorer_MAPE, cv=5)
-    print(f"ElasticNet: {np.mean(CVS_LM_EN)}")
+    print(f"ElasticNet: {CVS_LM_EN}")
     CVS_TM_CB = cross_val_score(TM_CB, X, y, scoring=scorer_MAPE, cv=5)
     print(f"Catboost: {CVS_TM_CB}")
     CVS_TM_LGBM = cross_val_score(TM_LGBM, X, y, scoring=scorer_MAPE, cv=5)
@@ -299,7 +299,7 @@ y = train_base["Salary"]
 fitting(X, y)
 #endregion
 
-sns.heatmap(train_next.corr(), annot=True, annot_kws={"fontsize":8})
+sns.heatmap(train_next.corr(), annot=True, annot_kws={"fontsize": 8})
 
 CB_model = CatBoostRegressor(verbose=False).fit(X, y)
 LGBM_model = LGBMRegressor().fit(X, y)
@@ -313,5 +313,24 @@ CB_model.score(X, y)
 LGBM_model.score(X, y)
 XGB_model.score(X, y)
 
+X.isnull().sum()
+y.isnull().sum()
 
+fitting(X, y)
 
+XGB_model.get_params()
+
+XGB_model = XGBRegressor()
+XGBM_params = {"learning_rate": [0.1, 0.01, 0.001],
+               "max_depth": [5, 8, 13, 21],
+               "n_estimators": [100, 200, 300, 400],
+               "colsample_bytree": [0.5, 0.7, 1], "random_state": np.arange(1, 50, 1)}
+
+xgbm_best_grid = GridSearchCV(XGB_model, XGBM_params, cv=5, n_jobs=-1, verbose=True).fit(X, y)
+xgbm_best_grid.best_params_
+
+xgbm_final = XGB_model.set_params(**xgbm_best_grid.best_params_, random_state=42).fit(X, y)
+
+cvs = cross_val_score(xgbm_final, X, y, cv=5)
+cvs
+np.mean(cvs)
