@@ -1,4 +1,4 @@
-#region Imports
+# region Imports
 # Basics
 import pandas as pd
 import numpy as np
@@ -27,17 +27,19 @@ from xgboost import XGBClassifier
 from qbstyles import mpl_style
 from typing import Optional
 from ModuleWizard.module_wizard import PandasOptions
-#endregion
+# endregion
 
 import matplotlib
+
 matplotlib.use("Qt5Agg")
 
 from sklearn.utils._testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 
-class HelperFunctions():
-    def __init__(self, dataframe):
-        self.dataframe = dataframe
+
+class HelperFunctions:
+    def __init__(self, __dataframe):
+        self.dataframe = __dataframe
 
     def QuickView(self):
         print(f"""
@@ -181,12 +183,14 @@ SAMPLES:
                 self.dataframe["DAYOFWEEK_NAME"] = self.dataframe[col].dt.day_name()
             else:
                 self.dataframe["DAYOFWEEK"] = self.dataframe[col].dt.dayofweek + 1
+
     def Errors(self,
                y_true,
                y_pred):
         print("MAPE:", mean_absolute_percentage_error(y_true, y_pred))
         print("MAE:", mean_absolute_error(y_true, y_pred))
         print("RMSE:", mean_squared_error(y_true, y_pred, squared=False))
+
     def FitModel(self,
                  estimator,
                  X,
@@ -226,7 +230,8 @@ SAMPLES:
         new_col = [np.round(x[0], decimals=4) for x in new_col]
         self.dataframe[col] = new_col
 
-#region Pipeline
+
+# region Pipeline
 PandasOptions().SetOptions(1, 2, 4)
 dataframe = pd.read_csv(r"C:\Users\kdrcn\OneDrive\Masaüstü\Py\datasets\CSV\Hitters.csv")
 helper = HelperFunctions(dataframe)
@@ -259,6 +264,7 @@ MAPE = mean_absolute_percentage_error
 scorer_MAE = make_scorer(MAE)
 scorer_MAPE = make_scorer(MAPE)
 
+
 @ignore_warnings(category=ConvergenceWarning)
 def fitting(X, y):
     CVS_LM_LR = cross_val_score(LM_LR, X, y, scoring=scorer_MAPE, cv=5)
@@ -276,6 +282,7 @@ def fitting(X, y):
     CVS_TM_XGB = cross_val_score(TM_XGB, X, y, scoring=scorer_MAPE, cv=5)
     print(f"XGBoost: {CVS_TM_XGB}")
 
+
 train_next = pd.get_dummies(train, columns=cat_cols, drop_first=True)
 test_next = pd.get_dummies(test, columns=cat_cols, drop_first=True)
 
@@ -288,16 +295,16 @@ X = train_next.drop("Salary", axis=1)
 y = train_next["Salary"]
 
 # fitting(X, y)
-#endregion
+# endregion
 
-#region Base Model
+# region Base Model
 train_base = pd.get_dummies(train, columns=cat_cols, drop_first=True)
 
 X = train_base.drop("Salary", axis=1)
 y = train_base["Salary"]
 
 fitting(X, y)
-#endregion
+# endregion
 
 sns.heatmap(train_next.corr(), annot=True, annot_kws={"fontsize": 8})
 
@@ -329,7 +336,6 @@ XGBM_params = {"learning_rate": [0.1, 0.01, 0.001],
                "colsample_bytree": [0.5, 0.7, 1],
                "random_state": 38}
 
-
 xgbm_best_grid = GridSearchCV(XGB_model, XGBM_params, cv=5, n_jobs=-1, verbose=True).fit(X, y)
 xgbm_best_grid.best_params_
 # learning_rate : 0.1
@@ -349,7 +355,8 @@ XGB_model = XGBRegressor(learning_rate=0.1, random_state=38)
 XGBM_params = {"max_depth": np.random.randint(5, 50, 10),
                "n_estimators": [int(x) for x in np.linspace(start=200, stop=1500, num=8)],
                "colsample_bytree": [0.5, 0.7, 1]}
-xgbm_best_grid_rs = RandomizedSearchCV(XGB_model, param_distributions=XGBM_params, n_iter=50, cv=5, random_state=42, n_jobs=-1).fit(X, y)
+xgbm_best_grid_rs = RandomizedSearchCV(XGB_model, param_distributions=XGBM_params, n_iter=50, cv=5, random_state=42,
+                                       n_jobs=-1).fit(X, y)
 xgbm_best_grid_rs.best_params_
 # max_depth : 10
 # n_estimators : 942
@@ -360,6 +367,3 @@ xgbm_final_rs = XGB_model.set_params(**xgbm_best_grid_rs.best_params_).fit(X, y)
 cvs = cross_val_score(xgbm_final_rs, X, y, cv=5)
 cvs
 np.mean(cvs)
-
-
-
