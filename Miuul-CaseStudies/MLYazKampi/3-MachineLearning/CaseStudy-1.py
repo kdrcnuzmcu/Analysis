@@ -13,7 +13,6 @@ from ModuleWizard import helpers
 import matplotlib
 matplotlib.use("Qt5Agg")
 
-
 hitters = pd.read_csv(r"C:\Users\kdrcn\OneDrive\Masaüstü\Py\Analysis\Miuul-CaseStudies\MLYazKampi\3-MachineLearning\hitters.csv")
 
 MAPE_scorer = make_scorer(mean_absolute_percentage_error)
@@ -45,13 +44,12 @@ th = np.sort(X_scores)[3]
 
 outlier_index = X[X_scores < th].index
 X = X.drop(outlier_index, axis=0)
-y = X["Salary"]
-
-test = X[X["Salary"].isnull()]
 
 train = X[X["Salary"].notnull()]
 Xtrain = train.drop("Salary", axis=1)
 ytrain = train["Salary"]
+
+test = X[X["Salary"].isnull()]
 
 LR = LinearRegression()
 L = Lasso()
@@ -118,20 +116,61 @@ train = X[X["Salary"].notnull()]
 Xtrain = train.drop("Salary", axis=1)
 ytrain = train["Salary"]
 
-Xtrain["New_HitsRatio"] = Xtrain["CHits"] / Xtrain["CAtBat"] * 100
-Xtrain["New_WalkPerYear"] = Xtrain["CWalks"] / Xtrain["Years"]
+def feature_ext(Xtrain):
+    Xtrain["New_AtBatRatio"] = Xtrain["AtBat"] / Xtrain["CAtBat"] * 100
+    Xtrain["New_HitsRatio"] = Xtrain["Hits"] / Xtrain["CHits"] * 100
+    Xtrain["New_HmRunRatio"] = Xtrain["HmRun"] / Xtrain["CHmRun"] * 100
+    Xtrain["New_RBIRatio"] = Xtrain["RBI"] / Xtrain["CRBI"] * 100
+    Xtrain["New_Walks"] = Xtrain["Walks"] / Xtrain["CWalks"] * 100
+    Xtrain["New_RunsRatio"] = Xtrain["Runs"] / Xtrain["CRuns"] * 100
 
-Xtrain_num_cols = num_cols
-Xtrain_num_cols.append("New_HitsRatio")
-Xtrain_num_cols.append("New_WalkPerYear")
+    Xtrain["New_AtBatRatio_byYear"] = Xtrain["CAtBat"] / Xtrain["Years"]
+    Xtrain["New_HitsRatio_byYear"] = Xtrain["CHits"] / Xtrain["Years"]
+    Xtrain["New_HmRunRatio_byYear"] = Xtrain["CHmRun"] / Xtrain["Years"]
+    Xtrain["New_RBIRatio_byYear"] = Xtrain["CRBI"] / Xtrain["Years"]
+    Xtrain["New_Walks_byYear"] = Xtrain["CWalks"] / Xtrain["Years"]
+    Xtrain["New_RunsRatio_byYear"] = Xtrain["CRuns"] / Xtrain["Years"]
 
-for col in Xtrain_num_cols:
-    Helper(Xtrain).Scaler(col, "standard")
+    Xtrain["New_AtBatSeason"] = Xtrain["New_AtBatRatio"] - Xtrain["New_AtBatRatio_byYear"]
+    Xtrain["New_HitsSeason"] = Xtrain["New_HitsRatio"] - Xtrain["New_HitsRatio_byYear"]
+    Xtrain["New_HmRunSeason"] = Xtrain["New_HmRunRatio"] - Xtrain["New_HmRunRatio_byYear"]
+    Xtrain["New_RBISeason"] = Xtrain["New_RBIRatio"] - Xtrain["New_RBIRatio_byYear"]
+    Xtrain["New_WalksSeason"] = Xtrain["New_Walks"] - Xtrain["New_Walks_byYear"]
+    Xtrain["New_RunsSeason"] = Xtrain["New_RunsRatio"] - Xtrain["New_RunsRatio_byYear"]
+
+    Xtrain["New_AllRatios"] = Xtrain["New_AtBatRatio"] * \
+                              Xtrain["New_HitsRatio"] * \
+                              Xtrain["New_HmRunRatio"] * \
+                              Xtrain["New_RBIRatio"] * \
+                              Xtrain["New_Walks"] * \
+                              Xtrain["New_RunsRatio"]
+    return Xtrain
+
+Xtrain = feature_ext(Xtrain)
+
+for col in Xtrain.columns:
+    Helper(Xtrain).Scaler(col, "robust")
+
+nans = Xtrain[Xtrain["New_HmRunRatio"].isnull()].index
+Xtrain = Xtrain.drop(nans)
+ytrain = ytrain.drop(nans)
+
 X_train, X_test, y_train, y_test = train_test_split(Xtrain, ytrain, test_size=0.2, random_state=42)
 
-L = Lasso(alpha=10)
+L = Lasso()
+
 L.fit(X_train, y_train)
 L.score(X_train, y_train)
-# 0.5517245575802783
+# 0.7207599008819809
 L.score(X_test, y_test)
-# 0.6192311433027957
+# 0.7091568231238095
+
+test = test.drop("Salary", axis=1)
+
+test = feature_ext(test)
+
+for col in test.columns:
+    Helper(test).Scaler(col, "robust")
+
+test = test.dropna()
+L.predict(test)
